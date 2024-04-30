@@ -17,26 +17,25 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     octoprint.plugin.TemplatePlugin
 ):
     ##~~ StartupPlugin mixin
+
     def on_after_startup(self):
-        self._logger.info("SpoolmanPlugin started!")
+        self._logger.info("URL: %s" % self._settings.get(["url"]))
 
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
-        return {
-            # put your plugin's default settings here
-        }
+        return dict(url="http://spoolman.docker/api/v1")
 
     ##~~ AssetPlugin mixin
 
-    #def get_assets(self):
-    #    # Define your plugin's asset files to automatically include in the
-    #    # core UI here.
-    #    return {
-    #        "js": ["js/spoolman.js"],
-    #        "css": ["css/spoolman.css"],
-    #        "less": ["less/spoolman.less"]
-    #    }
+    def get_assets(self):
+        # Define your plugin's asset files to automatically include in the
+        # core UI here.
+        return {
+            "js": ["js/spoolman.js"],
+            #"css": ["css/spoolman.css"],
+            #"less": ["less/spoolman.less"]
+        }
 
     ##~~ Softwareupdate hook
 
@@ -59,6 +58,13 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
                 "pip": "https://github.com/cw4g/OctoPrint-Spoolman/archive/{target_version}.zip",
             }
         }
+
+    ##~~ Template mixin
+
+    def get_template_configs(self):
+        return [
+            dict(type="settings", custom_bindings=False)
+        ]
 
 
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py

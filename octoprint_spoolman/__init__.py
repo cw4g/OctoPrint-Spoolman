@@ -10,16 +10,30 @@ from __future__ import absolute_import
 # Take a look at the documentation on what other plugin mixins are available.
 
 import octoprint.plugin
+import requests_openapi
 
 class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     octoprint.plugin.SettingsPlugin,
     octoprint.plugin.AssetPlugin,
-    octoprint.plugin.TemplatePlugin
+    octoprint.plugin.TemplatePlugin,
+    octoprint.plugin.SimpleApiPlugin
 ):
+    spools = []
     ##~~ StartupPlugin mixin
 
     def on_after_startup(self):
-        self._logger.info("URL: %s" % self._settings.get(["url"]))
+        spoolman_url = self._settings.get(["url"])
+        self._logger.info("URL: %s" % spoolman_url)
+        # load spec from url
+        c = requests_openapi.Client().load_spec_from_url(spoolman_url + "/openapi.json")
+        # set server
+        c.set_server(requests_openapi.Server(url=spoolman_url))
+        # call api by operation id
+        resp = c.Find_spool_spool_get() # resp: requests.Response
+        self.spools = resp.json()
+
+        for spool in self.spools:
+            self._logger.info("spool.filament.name: %s" % spool["filament"]["name"])
 
     ##~~ SettingsPlugin mixin
 
@@ -61,10 +75,29 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
 
     ##~~ Template mixin
 
+    def get_template_vars(self):
+        return dict(spools=self.spools)
+
     def get_template_configs(self):
         return [
             dict(type="settings", custom_bindings=False)
         ]
+
+    ##~~ SimpleApi mixin
+
+    def get_api_commands(self):
+        return dict(
+            selected=["id"]
+        )
+
+    def on_api_command(self, command, data):
+        import flask
+        if command == "selected":
+            self._logger.info("selected called, id is {id}".format(**data))
+
+    def on_api_get(self, request):
+        import flask
+        return flask.jsonify(spools=self.spools)
 
 
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py

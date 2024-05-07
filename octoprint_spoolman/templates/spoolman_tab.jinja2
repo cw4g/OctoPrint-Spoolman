@@ -16,7 +16,7 @@
         <td>{{ spool.filament.vendor.name }}</td>
         <td>{{ spool.filament.name }}</td>
         <td>{{ spool.filament.material }}</td>
-        <td>{{ spool.remaining_weight }}</td>
+        <td>{{ spool.remaining_weight|round|int }}g</td>
         <td><button id="{{ spool.id }}" class="btn btn-primary" data-bind="click: selected">Select</button></td>
     </tr>
     {% endfor %}

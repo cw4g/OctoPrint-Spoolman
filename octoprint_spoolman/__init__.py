@@ -8,6 +8,8 @@ from __future__ import absolute_import
 # as necessary.
 #
 # Take a look at the documentation on what other plugin mixins are available.
+import urllib3
+import requests
 import requests_openapi
 
 import octoprint.plugin
@@ -25,11 +27,16 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     def initialize(self):
         self._logger.info("starting init")
 
+        self.spools = []
         spoolman_url = self._settings.get(["url"])
-        self.spoolman = requests_openapi.Client().load_spec_from_url(spoolman_url + "/openapi.json")
-        self.spoolman.set_server(requests_openapi.Server(url=spoolman_url))
-
-        self.spools = self.getSpools()
+        try:
+            self.spoolman = requests_openapi.Client().load_spec_from_url(spoolman_url + "/openapi.json")
+            self.spoolman.set_server(requests_openapi.Server(url=spoolman_url))
+        #except (urllib3.exceptions.LocationParseError, requests.exceptions.InvalidURL):
+        except (requests.exceptions.InvalidURL):
+            self._logger.error("Can't connect to %s" % spoolman_url)
+        else:
+            self.spools = self.getSpools()
 
         self.filamentOdometer = NewFilamentOdometer()
         self.filamentOdometer.set_g90_extruder(self._settings.get_boolean(["feature", "g90InfluencesExtruder"]))

@@ -19,19 +19,26 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     octoprint.plugin.SimpleApiPlugin
 ):
     spools = []
+
+    ##~~
+
+    def getSpools(self, spoolman):
+        # load spec from url
+        c = requests_openapi.Client().load_spec_from_url(spoolman + "/openapi.json")
+        # set server
+        c.set_server(requests_openapi.Server(url=spoolman))
+        # call api by operation id
+        resp = c.Find_spool_spool_get() # resp: requests.Response
+        self.spools = resp.json()
+
     ##~~ StartupPlugin mixin
 
     def on_after_startup(self):
         spoolman_url = self._settings.get(["url"])
         self._logger.info("URL: %s" % spoolman_url)
         self._logger.info("Spool ID: %s" % self._settings.get(["spool_id"]))
-        # load spec from url
-        c = requests_openapi.Client().load_spec_from_url(spoolman_url + "/openapi.json")
-        # set server
-        c.set_server(requests_openapi.Server(url=spoolman_url))
-        # call api by operation id
-        resp = c.Find_spool_spool_get() # resp: requests.Response
-        self.spools = resp.json()
+
+        self.getSpools(spoolman_url)
 
         for spool in self.spools:
             self._logger.info("spool.filament.name: %s" % spool["filament"]["name"])
@@ -91,7 +98,8 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
 
     def get_api_commands(self):
         return dict(
-            selected=["id"]
+            selected=["id"],
+            refresh=[]
         )
 
     def on_api_command(self, command, data):
@@ -105,6 +113,9 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
                 self._settings.save()
             else:
                 self._logger.info("id is not integer")
+                self.getSpools(self._settings.get(["url"]))
+        elif command == "refresh":
+            self._logger.info("refresh spools")
 
     def on_api_get(self, request):
         import flask

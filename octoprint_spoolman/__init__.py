@@ -8,41 +8,59 @@ from __future__ import absolute_import
 # as necessary.
 #
 # Take a look at the documentation on what other plugin mixins are available.
-
-import octoprint.plugin
 import requests_openapi
 
+import octoprint.plugin
+from octoprint.events import Events
+from octoprint_spoolman.newodometer import NewFilamentOdometer
+
 class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
-    octoprint.plugin.SettingsPlugin,
-    octoprint.plugin.AssetPlugin,
-    octoprint.plugin.TemplatePlugin,
-    octoprint.plugin.SimpleApiPlugin
-):
-    spools = []
+                     octoprint.plugin.SettingsPlugin,
+                     octoprint.plugin.AssetPlugin,
+                     octoprint.plugin.TemplatePlugin,
+                     octoprint.plugin.SimpleApiPlugin,
+                     octoprint.plugin.EventHandlerPlugin
+                    ):
+
+    def initialize(self):
+        self._logger.info("starting init")
+
+        spoolman_url = self._settings.get(["url"])
+        self.spoolman = requests_openapi.Client().load_spec_from_url(spoolman_url + "/openapi.json")
+        self.spoolman.set_server(requests_openapi.Server(url=spoolman_url))
+
+        self.spools = self.getSpools()
+
+        self.filamentOdometer = NewFilamentOdometer()
+        self.filamentOdometer.set_g90_extruder(self._settings.get_boolean(["feature", "g90InfluencesExtruder"]))
+
+        self._logger.info("done init")
 
     ##~~
 
-    def getSpools(self, spoolman):
-        # load spec from url
-        c = requests_openapi.Client().load_spec_from_url(spoolman + "/openapi.json")
-        # set server
-        c.set_server(requests_openapi.Server(url=spoolman))
-        # call api by operation id
-        resp = c.Find_spool_spool_get() # resp: requests.Response
-        self.spools = resp.json()
+    def getSpools(self):
+        resp = self.spoolman.Find_spool_spool_get() # resp: requests.Response
+        return resp.json()
 
     def getActiveSpool(self):
         return next((sub for sub in self.spools if sub['id'] == self._settings.get(["spool_id"])), None)
 
+    def getSpoolId(self):
+        return self._settings.get(["spool_id"])
+
+    def setSpoolLengthUsed(self, length):
+        id = self.getSpoolId()
+        self._logger.info("Updating spool for %d", id)
+        if id > 0:
+            self.spoolman.Use_spool_filament_spool__spool_id__use_put(spool_id=id, json={"use_length": length})
+        pass
+
+
     ##~~ StartupPlugin mixin
 
     def on_after_startup(self):
-        spoolman_url = self._settings.get(["url"])
-        self._logger.info("URL: %s" % spoolman_url)
+        self._logger.info("URL: %s" % self._settings.get(["url"]))
         self._logger.info("Spool ID: %s" % self._settings.get(["spool_id"]))
-
-        self.getSpools(spoolman_url)
-
         for spool in self.spools:
             self._logger.info("spool.filament.name: %s" % spool["filament"]["name"])
 
@@ -63,28 +81,6 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
             "js": ["js/spoolman.js"],
             #"css": ["css/spoolman.css"],
             #"less": ["less/spoolman.less"]
-        }
-
-    ##~~ Softwareupdate hook
-
-    def get_update_information(self):
-        # Define the configuration for your plugin to use with the Software Update
-        # Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
-        # for details.
-        return {
-            "spoolman": {
-                "displayName": "Spoolman Plugin",
-                "displayVersion": self._plugin_version,
-
-                # version check: github repository
-                "type": "github_release",
-                "user": "cw4g",
-                "repo": "OctoPrint-Spoolman",
-                "current": self._plugin_version,
-
-                # update method: pip
-                "pip": "https://github.com/cw4g/OctoPrint-Spoolman/archive/{target_version}.zip",
-            }
         }
 
     ##~~ Template mixin
@@ -116,14 +112,77 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
                 return flask.jsonify(self.getActiveSpool())
             else:
                 self._logger.debug("id is not integer")
-                self.getSpools(self._settings.get(["url"]))
+                self.spools = self.getSpools()
         elif command == "refresh":
             self._logger.info("refresh spools")
+            self.spools = self.getSpools()
 
     def on_api_get(self, request):
         import flask
         spool = self.getActiveSpool()
         return flask.jsonify(spool)
+
+    ##~~ Event mixin
+
+    def on_event(self, event, payload):
+        if (Events.CLIENT_OPENED == event):
+            #self._on_clientOpened(payload)
+            return
+        if (Events.CLIENT_CLOSED == event):
+            #self._on_clientClosed(payload)
+            return
+
+        elif (Events.PRINT_STARTED == event):
+            #self.alreadyCanceled = False
+            self.filamentOdometer.reset()
+
+        #elif (Events.PRINT_PAUSED == event):
+            #self._on_printJobFinished("paused", payload)
+
+        elif (Events.PRINT_DONE == event):
+            #self._on_printJobFinished("success", payload)
+            # get the amount for tool0
+            extrusion = self.filamentOdometer.getExtrusionAmount()[0]
+            self._logger.info("Filament extrudes %f" % extrusion)
+            self.setSpoolLengthUsed(extrusion)
+
+        #elif (Events.PRINT_FAILED == event):
+            #if self.alreadyCanceled == False:
+                #self._on_printJobFinished("failed", payload)
+
+            #elif (Events.PRINT_CANCELLED == event):
+                #self.alreadyCanceled = True
+                #self._on_printJobFinished("canceled", payload)
+        pass
+
+
+    ##~~ Softwareupdate hook
+
+    def get_update_information(self):
+        # Define the configuration for your plugin to use with the Software Update
+        # Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
+        # for details.
+        return {
+            "spoolman": {
+                "displayName": "Spoolman Plugin",
+                "displayVersion": self._plugin_version,
+
+                # version check: github repository
+                "type": "github_release",
+                "user": "cw4g",
+                "repo": "OctoPrint-Spoolman",
+                "current": self._plugin_version,
+
+                # update method: pip
+                "pip": "https://github.com/cw4g/OctoPrint-Spoolman/archive/{target_version}.zip",
+            }
+        }
+
+    ##~~ GCode hook
+
+    def on_sentGCodeHook(self, comm_instance, phase, cmd, cmd_type, gcode, *args, **kwargs):
+        self.filamentOdometer.processGCodeLine(cmd)
+        pass
 
 
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
@@ -143,5 +202,6 @@ def __plugin_load__():
 
     global __plugin_hooks__
     __plugin_hooks__ = {
-        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
+        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
+        "octoprint.comm.protocol.gcode.sent": __plugin_implementation__.on_sentGCodeHook
     }

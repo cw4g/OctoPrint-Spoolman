@@ -7,7 +7,7 @@ $(function() {
         // this will be called when the user clicks the "Go" button and set the iframe's URL to
         // the entered URL
         self.selected = function(data, event) {
-            OctoPrint.simpleApiCommand("spoolman", "selected", {"id": event.target.id})
+            OctoPrint.simpleApiCommand("spoolman", "selected", {"id": parseInt(event.target.id)})
                 .done(function(response) { });
         };
 

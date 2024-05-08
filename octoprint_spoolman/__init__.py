@@ -24,6 +24,7 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     def on_after_startup(self):
         spoolman_url = self._settings.get(["url"])
         self._logger.info("URL: %s" % spoolman_url)
+        self._logger.info("Spool ID: %s" % self._settings.get(["spool_id"]))
         # load spec from url
         c = requests_openapi.Client().load_spec_from_url(spoolman_url + "/openapi.json")
         # set server
@@ -38,7 +39,10 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
-        return dict(url="http://spoolman.docker/api/v1")
+        return dict(
+            url="http://spoolman_host:port/api/v1",
+            spool_id=-1
+        )
 
     ##~~ AssetPlugin mixin
 
@@ -94,10 +98,18 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
         import flask
         if command == "selected":
             self._logger.info("selected called, id is {id}".format(**data))
+            self._logger.info(type(data.get("id")))
+            if isinstance(data.get("id"), int):
+                self._logger.info("id is integer")
+                self._settings.set(["spool_id"], data.get("id"))
+                self._settings.save()
+            else:
+                self._logger.info("id is not integer")
 
     def on_api_get(self, request):
         import flask
-        return flask.jsonify(spools=self.spools)
+        spool = list(filter(lambda spools: spools['id'] == self._settings.get(["spool_id"]), self.spools))
+        return flask.jsonify(spool)
 
 
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py

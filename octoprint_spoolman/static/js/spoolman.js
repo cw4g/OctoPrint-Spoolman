@@ -6,12 +6,19 @@ $(function() {
 
         self.id = ko.observable('-');
         self.name = ko.observable('-');
+        self.material = ko.observable('-');
         self.vendor = ko.observable('-');
         self.weight = ko.observable('-');
 
         self.selected = function(data, event) {
             OctoPrint.simpleApiCommand("spoolman", "selected", {"id": parseInt(event.target.id)})
-                .done(function(response) { });
+                .done(function(response) {
+                    self.id(response["id"]);
+                    self.name(response["filament"]["name"]);
+                    self.material(response["filament"]["material"]);
+                    self.vendor(response["filament"]["vendor"]["name"]);
+                    self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
+                });
         };
 
         self.refresh = function() {
@@ -21,6 +28,14 @@ $(function() {
 
         self.onBeforeBinding = function() {
             self.refresh();
+            OctoPrint.simpleApiGet("spoolman")
+                .done(function(response) {
+                    self.id(response["id"]);
+                    self.name(response["filament"]["name"]);
+                    self.material(response["filament"]["material"]);
+                    self.vendor(response["filament"]["vendor"]["name"]);
+                    self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
+                });
         }
     }
 

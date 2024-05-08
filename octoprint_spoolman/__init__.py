@@ -31,6 +31,9 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
         resp = c.Find_spool_spool_get() # resp: requests.Response
         self.spools = resp.json()
 
+    def getActiveSpool(self):
+        return next((sub for sub in self.spools if sub['id'] == self._settings.get(["spool_id"])), None)
+
     ##~~ StartupPlugin mixin
 
     def on_after_startup(self):
@@ -106,20 +109,20 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
         import flask
         if command == "selected":
             self._logger.info("selected called, id is {id}".format(**data))
-            self._logger.info(type(data.get("id")))
             if isinstance(data.get("id"), int):
-                self._logger.info("id is integer")
+                self._logger.debug("id is integer")
                 self._settings.set(["spool_id"], data.get("id"))
                 self._settings.save()
+                return flask.jsonify(self.getActiveSpool())
             else:
-                self._logger.info("id is not integer")
+                self._logger.debug("id is not integer")
                 self.getSpools(self._settings.get(["url"]))
         elif command == "refresh":
             self._logger.info("refresh spools")
 
     def on_api_get(self, request):
         import flask
-        spool = list(filter(lambda spools: spools['id'] == self._settings.get(["spool_id"]), self.spools))
+        spool = self.getActiveSpool()
         return flask.jsonify(spool)
 
 

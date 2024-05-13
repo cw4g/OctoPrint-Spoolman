@@ -2,24 +2,26 @@
 <table class="table">
     <thead>
         <tr>
-            <th scope="col">ID</th>
-            <th scope="col">Vendor</th>
-            <th scope="col">Name</th>
-            <th scope="col">Material</th>
-            <th scope="col">Weight</th>
-            <th scope="col">Action</th>
+            <th scope="col" width="50%">Name</th>
+            <th scope="col" width="15%">Vendor</th>
+            <th scope="col" width="12%">Material</th>
+            <th scope="col" width="10%">Weight</th>
+            <th scope="col" width="13%">Action</th>
         </tr>
     </thead>
-    <tbody>
-    {% for spool in plugin_spoolman_spools %}
+    <tbody data-bind="foreach: spools">
     <tr>
-        <td scope="row">{{ spool.id }}</td>
-        <td>{{ spool.filament.vendor.name }}</td>
-        <td>{{ spool.filament.name }}</td>
-        <td>{{ spool.filament.material }}</td>
-        <td>{{ spool.remaining_weight|round|int }}g</td>
-        <td><button id={{ spool.id }} class="btn btn-primary" data-bind="click: selected">Select</button></td>
+        <!--style="display: flex"-->
+        <th scope="row" style="display: flex">
+            <span data-bind="style: { color: '#' + filament.color_hex }" role="img" class="anticon" style="font-size: 42px; margin-right: 0px;">
+                {% include 'icon_spool.svg' %}
+            </span>
+            <span data-bind="text: filament.name"
+        </th>
+        <td data-bind="text: filament.vendor.name"></td>
+        <td data-bind="text: filament.material"></td>
+        <td data-bind="text: parseInt(remaining_weight) + 'g'"></td>
+        <td><button class="btn btn-primary" data-bind="click: $parent.selected, attr: { id: id }">Select</button></td>
     </tr>
-    {% endfor %}
     </tbody>
 </table>

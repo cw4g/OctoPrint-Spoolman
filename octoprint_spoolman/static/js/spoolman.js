@@ -21,6 +21,8 @@ $(function() {
                 });
         };
 
+        self.spools = ko.observableArray();
+
         self.refresh = function() {
             OctoPrint.simpleApiCommand("spoolman", "refresh")
                 .done(function(response) { });
@@ -28,14 +30,7 @@ $(function() {
 
         self.onBeforeBinding = function() {
             self.refresh();
-            OctoPrint.simpleApiGet("spoolman")
-                .done(function(response) {
-                    self.id(response["id"]);
-                    self.name(response["filament"]["name"]);
-                    self.material(response["filament"]["material"]);
-                    self.vendor(response["filament"]["vendor"]["name"]);
-                    self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
-                });
+            $.get("/api/plugin/spoolman", null, self.spools, 'json');
         }
     }
 

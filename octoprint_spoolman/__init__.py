@@ -127,7 +127,7 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     def on_api_get(self, request):
         import flask
         spool = self.getActiveSpool()
-        return flask.jsonify(spool)
+        return flask.jsonify(self.spools)
 
     ##~~ Event mixin
 

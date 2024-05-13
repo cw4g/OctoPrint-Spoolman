@@ -11,6 +11,7 @@ from __future__ import absolute_import
 import urllib3
 import requests
 import requests_openapi
+import flask
 
 import octoprint.plugin
 from octoprint.events import Events
@@ -35,8 +36,6 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
         #except (urllib3.exceptions.LocationParseError, requests.exceptions.InvalidURL):
         except (requests.exceptions.InvalidURL):
             self._logger.error("Can't connect to %s" % spoolman_url)
-        else:
-            self.spools = self.getSpools()
 
         self.filamentOdometer = NewFilamentOdometer()
         self.filamentOdometer.set_g90_extruder(self._settings.get_boolean(["feature", "g90InfluencesExtruder"]))
@@ -50,7 +49,7 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
         return resp.json()
 
     def getActiveSpool(self):
-        return next((sub for sub in self.spools if sub['id'] == self._settings.get(["spool_id"])), None)
+        return next((sub for sub in self.getSpools() if sub['id'] == self._settings.get(["spool_id"])), None)
 
     def getSpoolId(self):
         return self._settings.get(["spool_id"])
@@ -68,7 +67,7 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     def on_after_startup(self):
         self._logger.info("URL: %s" % self._settings.get(["url"]))
         self._logger.info("Spool ID: %s" % self._settings.get(["spool_id"]))
-        for spool in self.spools:
+        for spool in self.getSpools():
             self._logger.info("spool.filament.name: %s" % spool["filament"]["name"])
 
     ##~~ SettingsPlugin mixin
@@ -93,7 +92,7 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     ##~~ Template mixin
 
     def get_template_vars(self):
-        return dict(spools=self.spools)
+        return dict(spools=self.getSpools())
 
     def get_template_configs(self):
         return [
@@ -105,11 +104,10 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     def get_api_commands(self):
         return dict(
             selected=["id"],
-            refresh=[]
+            getselected=[]
         )
 
     def on_api_command(self, command, data):
-        import flask
         if command == "selected":
             self._logger.info("selected called, id is {id}".format(**data))
             if isinstance(data.get("id"), int):
@@ -119,15 +117,13 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
                 return flask.jsonify(self.getActiveSpool())
             else:
                 self._logger.debug("id is not integer")
-                self.spools = self.getSpools()
-        elif command == "refresh":
-            self._logger.info("refresh spools")
-            self.spools = self.getSpools()
+        elif command == "getselected":
+            self._logger.info("get selected spool")
+            return flask.jsonify(self.getActiveSpool())
 
     def on_api_get(self, request):
-        import flask
         spool = self.getActiveSpool()
-        return flask.jsonify(self.spools)
+        return flask.jsonify(self.getSpools())
 
     ##~~ Event mixin
 

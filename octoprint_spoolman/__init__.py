@@ -85,7 +85,7 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
         # core UI here.
         return {
             "js": ["js/spoolman.js"],
-            #"css": ["css/spoolman.css"],
+            "css": ["css/spoolman.css"],
             #"less": ["less/spoolman.less"]
         }
 
@@ -104,7 +104,8 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     def get_api_commands(self):
         return dict(
             selected=["id"],
-            getselected=[]
+            getselected=[],
+            clear=[]
         )
 
     def on_api_command(self, command, data):
@@ -120,6 +121,10 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
         elif command == "getselected":
             self._logger.info("get selected spool")
             return flask.jsonify(self.getActiveSpool())
+        elif command == "clear":
+            self._logger.info("cleared selected spool")
+            self._settings.set(["spool_id"], -1)
+            self._settings.save()
 
     def on_api_get(self, request):
         spool = self.getActiveSpool()

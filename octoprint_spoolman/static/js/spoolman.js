@@ -13,25 +13,76 @@ $(function() {
         self.selected = function(data, event) {
             OctoPrint.simpleApiCommand("spoolman", "selected", {"id": parseInt(event.target.id)})
                 .done(function(response) {
-                    self.id(response["id"]);
-                    self.name(response["filament"]["name"]);
-                    self.material(response["filament"]["material"]);
-                    self.vendor(response["filament"]["vendor"]["name"]);
-                    self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
+                    if (response != null) {
+                        self.id(response["id"]);
+                        self.name(response["filament"]["name"]);
+                        self.material(response["filament"]["material"]);
+                        self.vendor(response["filament"]["vendor"]["name"]);
+                        self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
+                    }
                 });
         };
 
-        self.spools = ko.observableArray();
+        self.clear = function(data, event) {
+            OctoPrint.simpleApiCommand("spoolman", "clear", {"id": parseInt(event.target.id)})
+                .done(function(response) {
+                    self.id('-');
+                    self.name('-');
+                    self.material('-');
+                    self.vendor('-');
+                    self.weight('-');
+                });
+        };
+
+        self.allSpools = ko.observableArray();
+        self.pageNumber = ko.observable(0);
+        self.nbPerPage = 10;
+        self.totalPages = ko.computed(function() {
+            var div = Math.floor(self.allSpools().length / self.nbPerPage);
+            div += self.allSpools().length % self.nbPerPage > 0 ? 1 : 0;
+            return div - 1;
+        });
+
+        self.spools = ko.computed(function() {
+            var first = self.pageNumber() * self.nbPerPage;
+            return self.allSpools.slice(first, first + self.nbPerPage);
+        });
+        self.hasPrevious = ko.computed(function() {
+            return self.pageNumber() !== 0 ? "" : "disabled";
+        });
+        self.hasNext = ko.computed(function() {
+            return self.pageNumber() !== self.totalPages() ? "" : "disabled";
+        });
+        self.next = function() {
+            if(self.pageNumber() < self.totalPages()) {
+                self.pageNumber(self.pageNumber() + 1);
+            }
+        }
+
+        self.previous = function() {
+            if(self.pageNumber() != 0) {
+                self.pageNumber(self.pageNumber() - 1);
+            }
+        }
+
+        self.getActive = ko.computed(function() {
+            if (self.id() == '-') {
+                return -1;
+            }
+            return self.id();
+        });
 
         self.onBeforeBinding = function() {
-            $.get("/api/plugin/spoolman", null, self.spools, 'json');
+            $.get("/api/plugin/spoolman", null, self.allSpools, 'json');
             OctoPrint.simpleApiCommand("spoolman", "getselected")
                 .done(function(response) {
-                    self.id(response["id"]);
-                    self.name(response["filament"]["name"]);
-                    self.material(response["filament"]["material"]);
-                    self.vendor(response["filament"]["vendor"]["name"]);
-                    self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
+                    if (response != null) {
+                        self.id(response["id"]);
+                        self.name(response["filament"]["name"]);
+                        self.material(response["filament"]["material"]);
+                        self.vendor(response["filament"]["vendor"]["name"]);
+                        self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
+                    }
                 });
         }
     }

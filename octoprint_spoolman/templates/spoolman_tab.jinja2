@@ -15,12 +15,26 @@
             <span data-bind="style: { color: '#' + filament.color_hex }" role="img" class="anticon" style="font-size: 42px; margin-right: 0px;">
                 {% include 'icon_spool.svg' %}
             </span>
-            <span data-bind="text: filament.name"
+            <span data-bind="text: filament.name, class: $parent.getActive() == id ? `text-success` : ``"></span>
         </th>
         <td data-bind="text: filament.vendor.name"></td>
         <td data-bind="text: filament.material"></td>
         <td data-bind="text: parseInt(remaining_weight) + 'g'"></td>
-        <td><button class="btn btn-primary" data-bind="click: $parent.selected, attr: { id: id }">Select</button></td>
+        <td>
+            <!-- ko ifnot: $parent.getActive() == id -->
+            <button class="btn btn-primary" data-bind="click: $parent.selected, attr: { id: id }">Select</button>
+            <!-- /ko -->
+            <!-- ko if: $parent.getActive() == id -->
+            <button class="btn btn-danger" data-bind="click: $parent.clear, attr: { id: id }">Clear</button>
+            <!-- /ko -->
+        </td>
     </tr>
     </tbody>
 </table>
+<div class="pagination pagination-centered">
+  <ul>
+    <li data-bind="css: hasPrevious"><a data-bind="click: previous" href="#">&laquo;</a></li>
+    <li><span data-bind="text: pageNumber"></span></li>
+    <li data-bind="css: hasNext"><a data-bind="click: next" href="#">&raquo;</a></li>
+  </ul>
+</div>

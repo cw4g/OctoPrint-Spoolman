@@ -4,5 +4,8 @@
 <span>Vendor</span>: <strong data-bind="text: vendor"></strong><br>
 <span>Weight</span>: <strong data-bind="text: weight"></strong><br>
 <!-- ko if: getActive() != -1 -->
-<button class="btn btn-danger btn-clear" data-bind="click: clear, attr: { id: id }">Clear</button>
+<span class="spool-icon" data-bind="style: { color: color_hex }" role="img" class="anticon" style="font-size: 42px; margin-right: 0px;">
+    {% include 'icon_spool.svg' %}
+</span>
+<button class="btn btn-danger" data-bind="click: clear, attr: { id: id }">Clear</button>
 <!-- /ko -->

@@ -9,6 +9,7 @@ $(function() {
         self.material = ko.observable('-');
         self.vendor = ko.observable('-');
         self.weight = ko.observable('-');
+        self.color_hex = ko.observable('FF0000');
 
         self.selected = function(data, event) {
             OctoPrint.simpleApiCommand("spoolman", "selected", {"id": parseInt(event.target.id)})
@@ -19,6 +20,7 @@ $(function() {
                         self.material(response["filament"]["material"]);
                         self.vendor(response["filament"]["vendor"]["name"]);
                         self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
+                        self.color_hex('#' + response["filament"]["color_hex"].trim());
                     }
                 });
         };
@@ -82,7 +84,9 @@ $(function() {
                         self.material(response["filament"]["material"]);
                         self.vendor(response["filament"]["vendor"]["name"]);
                         self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
+                        self.color_hex('#' + response["filament"]["color_hex"].trim());
                     }
+                    console.log(self.color_hex());
                 });
         }
     }

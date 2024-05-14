@@ -1,8 +1,30 @@
 $(function() {
+    function showDialog(dialogId, confirmFunction){
+        // show dialog
+        // sidebar_deleteFilesDialog
+        var myDialog = $(dialogId);
+        var confirmButton = $("button.btn-confirm", myDialog);
+        var cancelButton = $("button.btn-cancel", myDialog);
+        //var dialogTitle = $("h3.modal-title", editDialog);
+
+        confirmButton.unbind("click");
+        confirmButton.bind("click", function() {
+            confirmFunction(myDialog);
+        });
+        myDialog.modal({
+            //minHeight: function() { return Math.max($.fn.modal.defaults.maxHeight() - 80, 250); }
+        }).css({
+            width: 'auto',
+            'margin-left': function() { return -($(this).width() /2); }
+        });
+    }
+
     function SpoolmanViewModel(parameters) {
         var self = this;
 
         self.settings = parameters[0];
+        self.printerStateViewModel = parameters[1];
+        self.filesViewModel = parameters[2];
 
         self.id = ko.observable('-');
         self.name = ko.observable('-');
@@ -11,10 +33,26 @@ $(function() {
         self.weight = ko.observable('-');
         self.color_hex = ko.observable('FF0000');
 
+        const startPrint = self.printerStateViewModel.print;
+        const newStartPrint = function confirmSpoolSelectionBeforeStartPrint() {
+            showDialog("#navbar_spoolDialog", function(dialog) {
+                startPrint();
+                dialog.modal('hide');
+            });
+        };
+        self.printerStateViewModel.print = newStartPrint;
+
+        const loadFile = self.filesViewModel.loadFile;
+        const newLoadFile = function confirmSpoolSelectionBeforeLoadFile(data, printAfterLoad) {
+            showDialog("#navbar_spoolDialog", function(dialog) {
+                loadFile(data, printAfterLoad);
+                dialog.modal('hide');
+            });
+        };
+        self.filesViewModel.loadFile = newLoadFile;
+
         self.selected = function(data, event) {
-            OctoPrint.simpleApiCommand("spoolman", "selected", {"id": parseInt(event.target.id)})
-                .done(function(response) {
-                    if (response != null) {
+            OctoPrint.simpleApiCommand("spoolman", "selected", {"id": parseInt(event.target.id)}) .done(function(response) { if (response != null) {
                         self.id(response["id"]);
                         self.name(response["filament"]["name"]);
                         self.material(response["filament"]["material"]);
@@ -75,6 +113,7 @@ $(function() {
         });
 
         self.onBeforeBinding = function() {
+            console.log(self.printerStateViewModel);
             $.get("/api/plugin/spoolman", null, self.allSpools, 'json');
             OctoPrint.simpleApiCommand("spoolman", "getselected")
                 .done(function(response) {
@@ -100,9 +139,9 @@ $(function() {
         // This is a list of dependencies to inject into the plugin, the order which you request
         // here is the order in which the dependencies will be injected into your view model upon
         // instantiation via the parameters argument
-        ["settingsViewModel"],
+        ["settingsViewModel", "printerStateViewModel", "filesViewModel"],
 
         // Finally, this is the list of selectors for all elements we want this view model to be bound to.
-        ["#tab_plugin_spoolman", "#sidebar_plugin_spoolman"]
+        ["#tab_plugin_spoolman", "#sidebar_plugin_spoolman", "#navbar_spoolDialog"]
     ]);
 });

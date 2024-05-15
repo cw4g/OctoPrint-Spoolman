@@ -60,6 +60,25 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
             self.spoolman.Use_spool_filament_spool__spool_id__use_put(spool_id=id, json={"use_length": length})
         pass
 
+    def commitOdometer(self):
+        extrusion = self.filamentOdometer.getExtrusionAmount()[0]
+        self._logger.info("Filament extrudes %f" % extrusion)
+        self.setSpoolLengthUsed(extrusion)
+        self._plugin_manager.send_plugin_message(self._identifier,
+                                     dict(action="update spools",
+                                          data=[]))
+        self.filamentOdometer.reset_extruded_length()
+        pass
+
+    def onPrintJobStarted(self):
+        self._logger.info("onPrintJobStarted: called!")
+        self.filamentOdometer.reset()
+        pass
+
+    def onPrintJobFinished(self, status, payload):
+        self._logger.info("onPrintJobFinished: status = %s" % status)
+        self.commitOdometer()
+        pass
 
     ##~~ StartupPlugin mixin
 
@@ -129,38 +148,23 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
     ##~~ Event mixin
 
     def on_event(self, event, payload):
-        if (Events.CLIENT_OPENED == event):
-            #self._on_clientOpened(payload)
-            return
-        if (Events.CLIENT_CLOSED == event):
-            #self._on_clientClosed(payload)
-            return
+        if (Events.PRINT_STARTED == event):
+            self.alreadyCanceled = False
+            self.onPrintJobStarted()
 
-        elif (Events.PRINT_STARTED == event):
-            #self.alreadyCanceled = False
-            self.filamentOdometer.reset()
-
-        #elif (Events.PRINT_PAUSED == event):
-            #self._on_printJobFinished("paused", payload)
+        elif (Events.PRINT_PAUSED == event):
+            self.onPrintJobFinished("paused", payload)
 
         elif (Events.PRINT_DONE == event):
-            #self._on_printJobFinished("success", payload)
-            # get the amount for tool0
-            extrusion = self.filamentOdometer.getExtrusionAmount()[0]
-            self._logger.info("Filament extrudes %f" % extrusion)
-            self.setSpoolLengthUsed(extrusion)
-            self._logger.info("_identifier: %s" % self._identifier)
-            self._plugin_manager.send_plugin_message(self._identifier,
-                                         dict(action="update spools",
-                                              data=[]))
+            self.onPrintJobFinished("success", payload)
 
-        #elif (Events.PRINT_FAILED == event):
-            #if self.alreadyCanceled == False:
-                #self._on_printJobFinished("failed", payload)
+        elif (Events.PRINT_FAILED == event):
+            if self.alreadyCanceled == False:
+                self.onPrintJobFinished("failed", payload)
 
-            #elif (Events.PRINT_CANCELLED == event):
-                #self.alreadyCanceled = True
-                #self._on_printJobFinished("canceled", payload)
+        elif (Events.PRINT_CANCELLED == event):
+            self.alreadyCanceled = True
+            self.onPrintJobFinished("canceled", payload)
         pass
 
 

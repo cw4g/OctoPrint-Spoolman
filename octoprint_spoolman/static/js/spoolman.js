@@ -63,7 +63,7 @@ $(function() {
         };
 
         self.getActive = function() {
-            if (self.activeSpool === null) {
+            if (self.activeSpool() == null) {
                 return -1;
             }
             return self.activeSpool().id;

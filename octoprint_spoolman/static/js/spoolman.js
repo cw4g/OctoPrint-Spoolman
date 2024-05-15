@@ -1,4 +1,6 @@
 $(function() {
+    PLUGIN_ID = "spoolman";
+
     function showDialog(dialogId, confirmFunction){
         // show dialog
         // sidebar_deleteFilesDialog
@@ -26,12 +28,7 @@ $(function() {
         self.printerStateViewModel = parameters[1];
         self.filesViewModel = parameters[2];
 
-        self.id = ko.observable('-');
-        self.name = ko.observable('-');
-        self.material = ko.observable('-');
-        self.vendor = ko.observable('-');
-        self.weight = ko.observable('-');
-        self.color_hex = ko.observable('FF0000');
+        self.activeSpool = ko.observable(null);
 
         const startPrint = self.printerStateViewModel.print;
         const newStartPrint = function confirmSpoolSelectionBeforeStartPrint() {
@@ -53,12 +50,7 @@ $(function() {
 
         self.selected = function(data, event) {
             OctoPrint.simpleApiCommand("spoolman", "selected", {"id": parseInt(event.target.id)}) .done(function(response) { if (response != null) {
-                        self.id(response["id"]);
-                        self.name(response["filament"]["name"]);
-                        self.material(response["filament"]["material"]);
-                        self.vendor(response["filament"]["vendor"]["name"]);
-                        self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
-                        self.color_hex('#' + response["filament"]["color_hex"].trim());
+                        self.activeSpool(response);
                     }
                 });
         };
@@ -66,13 +58,16 @@ $(function() {
         self.clear = function(data, event) {
             OctoPrint.simpleApiCommand("spoolman", "clear", {"id": parseInt(event.target.id)})
                 .done(function(response) {
-                    self.id('-');
-                    self.name('-');
-                    self.material('-');
-                    self.vendor('-');
-                    self.weight('-');
+                    self.activeSpool(null);
                 });
         };
+
+        self.getActive = function() {
+            if (self.activeSpool === null) {
+                return -1;
+            }
+            return self.activeSpool().id;
+        }
 
         self.allSpools = ko.observableArray();
         self.pageNumber = ko.observable(0);
@@ -105,28 +100,32 @@ $(function() {
             }
         }
 
-        self.getActive = ko.computed(function() {
-            if (self.id() == '-') {
-                return -1;
-            }
-            return self.id();
-        });
-
         self.onBeforeBinding = function() {
             console.log(self.printerStateViewModel);
             $.get("/api/plugin/spoolman", null, self.allSpools, 'json');
             OctoPrint.simpleApiCommand("spoolman", "getselected")
                 .done(function(response) {
                     if (response != null) {
-                        self.id(response["id"]);
-                        self.name(response["filament"]["name"]);
-                        self.material(response["filament"]["material"]);
-                        self.vendor(response["filament"]["vendor"]["name"]);
-                        self.weight(parseInt(response["remaining_weight"]).toString().concat("g"));
-                        self.color_hex('#' + response["filament"]["color_hex"].trim());
+                        self.activeSpool(response);
                     }
-                    console.log(self.color_hex());
                 });
+        }
+
+        self.onDataUpdaterPluginMessage = function(plugin, data) {
+            if (plugin != PLUGIN_ID) {
+                return;
+            }
+
+            if (data.action == "update spools") {
+                console.log("update spools");
+                $.get("/api/plugin/spoolman", null, self.allSpools, 'json');
+                OctoPrint.simpleApiCommand("spoolman", "getselected")
+                    .done(function(response) {
+                        if (response != null) {
+                            self.activeSpool(response);
+                        }
+                    });
+            }
         }
     }
 

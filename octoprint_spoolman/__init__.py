@@ -33,7 +33,6 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
         try:
             self.spoolman = requests_openapi.Client().load_spec_from_url(spoolman_url + "/openapi.json")
             self.spoolman.set_server(requests_openapi.Server(url=spoolman_url))
-        #except (urllib3.exceptions.LocationParseError, requests.exceptions.InvalidURL):
         except (requests.exceptions.InvalidURL):
             self._logger.error("Can't connect to %s" % spoolman_url)
 
@@ -90,9 +89,6 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
         }
 
     ##~~ Template mixin
-
-    def get_template_vars(self):
-        return dict(spools=self.getSpools())
 
     def get_template_configs(self):
         return [
@@ -153,6 +149,10 @@ class SpoolmanPlugin(octoprint.plugin.StartupPlugin,
             extrusion = self.filamentOdometer.getExtrusionAmount()[0]
             self._logger.info("Filament extrudes %f" % extrusion)
             self.setSpoolLengthUsed(extrusion)
+            self._logger.info("_identifier: %s" % self._identifier)
+            self._plugin_manager.send_plugin_message(self._identifier,
+                                         dict(action="update spools",
+                                              data=[]))
 
         #elif (Events.PRINT_FAILED == event):
             #if self.alreadyCanceled == False:

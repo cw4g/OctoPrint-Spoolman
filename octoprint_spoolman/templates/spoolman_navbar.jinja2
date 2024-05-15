@@ -5,16 +5,19 @@
         <h3 class="modal-title">Selected spool</h3>
     </div>
     <div class="modal-body">
-        <span>ID</span>: <strong data-bind="text: id"></strong><br>
-        <span>Name</span>: <strong data-bind="text: name"></strong><br>
-        <span>Material</span>: <strong data-bind="text: material"></strong><br>
-        <span>Vendor</span>: <strong data-bind="text: vendor"></strong><br>
-        <span>Weight</span>: <strong data-bind="text: weight"></strong><br>
-        <!-- ko if: getActive() != -1 -->
-        <span class="spool-icon" data-bind="style: { color: color_hex }" role="img" class="anticon" style="font-size: 42px; margin-right: 0px;">
-            {% include 'icon_spool.svg' %}
-        </span>
-        <!-- /ko -->
+        <div data-bind="if: activeSpool">
+            <span>ID</span>: <strong data-bind="text: activeSpool().id"></strong><br>
+            <span>Name</span>: <strong data-bind="text: activeSpool().filament.name"></strong><br>
+            <span>Material</span>: <strong data-bind="text: activeSpool().filament.material"></strong><br>
+            <span>Vendor</span>: <strong data-bind="text: activeSpool().filament.vendor.name"></strong><br>
+            <span>Weight</span>: <strong data-bind="text: parseInt(activeSpool().remaining_weight) + 'g'"></strong><br>
+            <span class="spool-icon" data-bind="style: { color: '#' + activeSpool().filament.color_hex }" role="img" class="anticon" style="font-size: 42px; margin-right: 0px;">
+                {% include 'icon_spool.svg' %}
+            </span>
+        </div>
+        <div data-bind="ifnot: activeSpool">
+            <strong>No spool selected.</strong>
+        </div>
     </div>
     <div class="modal-footer">
         <button class="btn btn-cancel" data-dismiss="modal" aria-hidden="true">Cancel</button>
